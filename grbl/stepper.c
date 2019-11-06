@@ -21,6 +21,9 @@
 
 #include "grbl.h"
 
+// stepper motor state
+int stepStateX=0;
+int stepStateY=0;
 
 // Some useful constants.
 #define DT_SEGMENT (1.0/(ACCELERATION_TICKS_PER_SECOND*60.0)) // min/segment
@@ -471,15 +474,27 @@ ISR(TIMER1_COMPA_vect)
     if (st.counter_x > st.exec_block->step_event_count) {
       st.step_outbits[X_AXIS] |= (1<<STEP_BIT(X_AXIS));
       st.counter_x -= st.exec_block->step_event_count;
-      if (st.exec_block->direction_bits[X_AXIS] & (1<<DIRECTION_BIT(X_AXIS))) { sys_position[X_AXIS]--; }
-      else { sys_position[X_AXIS]++; }
+      if (st.exec_block->direction_bits[X_AXIS] & (1<<DIRECTION_BIT(X_AXIS))) { sys_position[X_AXIS]--;
+          // ULN2003 stepper motor
+          stepStateX = Stepper_step(stepStateX,1,40);
+	  }
+      else { sys_position[X_AXIS]++;
+	  // ULN2003 stepper motor
+	  stepStateX = Stepper_step(stepStateX,2,40);
+	  }
     }
   #else
     if (st.counter_x > st.exec_block->step_event_count) {
       st.step_outbits |= (1<<X_STEP_BIT);
       st.counter_x -= st.exec_block->step_event_count;
-      if (st.exec_block->direction_bits & (1<<X_DIRECTION_BIT)) { sys_position[X_AXIS]--; }
-      else { sys_position[X_AXIS]++; }
+      if (st.exec_block->direction_bits & (1<<X_DIRECTION_BIT)) { sys_position[X_AXIS]--; 
+          // ULN2003 stepper motor
+          stepStateX = Stepper_step(stepStateX,1,40);
+	  }
+      else { sys_position[X_AXIS]++;
+	  // ULN2003 stepper motor 
+	  stepStateX = Stepper_step(stepStateX,2,40);
+	  }
     }
   #endif // Ramps Board
 
@@ -509,18 +524,30 @@ ISR(TIMER1_COMPA_vect)
     st.counter_z += st.exec_block->steps[Z_AXIS];
   #endif
   #ifdef DEFAULTS_RAMPS_BOARD
-    if (st.counter_z > st.exec_block->step_event_count) {
-      st.step_outbits[Z_AXIS] |= (1<<STEP_BIT(Z_AXIS));
-      st.counter_z -= st.exec_block->step_event_count;
-      if (st.exec_block->direction_bits[Z_AXIS] & (1<<DIRECTION_BIT(Z_AXIS))) { sys_position[Z_AXIS]--; }
-      else { sys_position[Z_AXIS]++; }
+    if (st.counter_y > st.exec_block->step_event_count) {
+      st.step_outbits[Y_AXIS] |= (1<<STEP_BIT(Y_AXIS));
+      st.counter_y -= st.exec_block->step_event_count;
+      if (st.exec_block->direction_bits[Y_AXIS] & (1<<DIRECTION_BIT(Y_AXIS))) { sys_position[Y_AXIS]--;
+	  // ULN2003 stepper motor 
+          stepStateY = Stepper_step(stepStateY,1,50);
+	  }
+      else { sys_position[Y_AXIS]++;
+	  // ULN2003 stepper motor 
+          stepStateY = Stepper_step(stepStateY,2,50);
+	  }
     }
   #else
-    if (st.counter_z > st.exec_block->step_event_count) {
-      st.step_outbits |= (1<<Z_STEP_BIT);
-      st.counter_z -= st.exec_block->step_event_count;
-      if (st.exec_block->direction_bits & (1<<Z_DIRECTION_BIT)) { sys_position[Z_AXIS]--; }
-      else { sys_position[Z_AXIS]++; }
+    if (st.counter_y > st.exec_block->step_event_count) {
+      st.step_outbits |= (1<<Y_STEP_BIT);
+      st.counter_y -= st.exec_block->step_event_count;
+      if (st.exec_block->direction_bits & (1<<Y_DIRECTION_BIT)) { sys_position[Y_AXIS]--;
+	  // ULN2003 stepper motor 
+          stepStateY = Stepper_step(stepStateY,1,50);
+	  }
+      else { sys_position[Y_AXIS]++;
+	  // ULN2003 stepper motor  
+	  stepStateY = Stepper_step(stepStateY,2,50);
+	  }
     }
   #endif // Ramps Board
 
@@ -1188,4 +1215,56 @@ float st_get_realtime_rate()
     return prep.current_speed;
   }
   return 0.0f;
+}
+///Handling of ULN2003 stepper motor
+
+//move the motor one step in defined direction
+int Stepper_step(int _state, int direction, int pin)
+{
+	switch (_state)
+	{  
+		case 0:
+		Stepper_output(HIGH,LOW,LOW,LOW,pin);
+		break;
+		case 1:
+		Stepper_output(HIGH,HIGH,LOW,LOW,pin);
+		break;
+		case 2:
+		Stepper_output(LOW,HIGH,LOW,LOW,pin);
+		break;
+		case 3:
+		Stepper_output(LOW,HIGH,HIGH,LOW,pin);
+		break;
+		case 4:
+		Stepper_output(LOW,LOW,HIGH,LOW,pin);
+		break;
+		case 5:
+		Stepper_output(LOW,LOW,HIGH,HIGH,pin);
+		break;
+		case 6:
+		Stepper_output(LOW,LOW,LOW,HIGH,pin);
+		break;
+		case 7:
+		Stepper_output(HIGH,LOW,LOW,HIGH,pin);
+		break;
+	}
+	if (direction==1)
+	{
+		_state++;
+		if (_state==8) _state=0;
+	}
+	if (direction==2)
+	{
+		_state--;
+		if (_state==-1) _state=7;
+	}
+	return _state;
+}
+//Write digital outputs to ULN2003 stepper driver called in function step()
+void Stepper_output(bool state1,bool state2,bool state3,bool state4,int pin)
+{
+	digitalWrite(pin, state1);
+	digitalWrite(pin+1, state2);
+	digitalWrite(pin+2, state3);
+	digitalWrite(pin+3, state4); 
 }
