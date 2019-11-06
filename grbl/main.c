@@ -43,6 +43,16 @@ int main(void)
   settings_init(); // Load Grbl settings from EEPROM
   stepper_init();  // Configure stepper pins and interrupt timers
   system_init();   // Configure pinout pins and pin-change interrupt
+	
+  //init pins for ULN2003 stepper motor
+  pinMode(40, OUTPUT);
+  pinMode(41, OUTPUT);
+  pinMode(42, OUTPUT);
+  pinMode(43, OUTPUT);
+  pinMode(50, OUTPUT);
+  pinMode(51, OUTPUT);
+  pinMode(52, OUTPUT);
+  pinMode(53, OUTPUT);
 
   memset(sys_position,0,sizeof(sys_position)); // Clear machine position.
   sei(); // Enable interrupts
