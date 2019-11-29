@@ -21,7 +21,7 @@
 
 #include "grbl.h"
 
-// stepper motor state
+// ULN2003 stepper motor state
 int stepStateX=0;
 int stepStateY=0;
 
@@ -305,6 +305,10 @@ void st_go_idle()
     if (pin_state) { STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT); }
     else { STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT); }
   #endif // Ramps Board
+  
+  //Pull ULN2003 Stepper Motor pins low on idle
+  Stepper_output(LOW,LOW,LOW,LOW,40);
+  Stepper_output(LOW,LOW,LOW,LOW,50);
 }
 
 
@@ -474,14 +478,8 @@ ISR(TIMER1_COMPA_vect)
     if (st.counter_x > st.exec_block->step_event_count) {
       st.step_outbits[X_AXIS] |= (1<<STEP_BIT(X_AXIS));
       st.counter_x -= st.exec_block->step_event_count;
-      if (st.exec_block->direction_bits[X_AXIS] & (1<<DIRECTION_BIT(X_AXIS))) { sys_position[X_AXIS]--;
-          // ULN2003 stepper motor
-          stepStateX = Stepper_step(stepStateX,1,40);
-	  }
-      else { sys_position[X_AXIS]++;
-	  // ULN2003 stepper motor
-	  stepStateX = Stepper_step(stepStateX,2,40);
-	  }
+      if (st.exec_block->direction_bits[X_AXIS] & (1<<DIRECTION_BIT(X_AXIS))) { sys_position[X_AXIS]--; }
+      else { sys_position[X_AXIS]++; }
     }
   #else
     if (st.counter_x > st.exec_block->step_event_count) {
@@ -492,8 +490,8 @@ ISR(TIMER1_COMPA_vect)
           stepStateX = Stepper_step(stepStateX,1,40);
 	  }
       else { sys_position[X_AXIS]++;
-	  // ULN2003 stepper motor 
-	  stepStateX = Stepper_step(stepStateX,2,40);
+	      // ULN2003 stepper motor 
+	      stepStateX = Stepper_step(stepStateX,2,40);
 	  }
     }
   #endif // Ramps Board
@@ -514,8 +512,14 @@ ISR(TIMER1_COMPA_vect)
     if (st.counter_y > st.exec_block->step_event_count) {
       st.step_outbits |= (1<<Y_STEP_BIT);
       st.counter_y -= st.exec_block->step_event_count;
-      if (st.exec_block->direction_bits & (1<<Y_DIRECTION_BIT)) { sys_position[Y_AXIS]--; }
-      else { sys_position[Y_AXIS]++; }
+      if (st.exec_block->direction_bits & (1<<Y_DIRECTION_BIT)) { sys_position[Y_AXIS]--;
+          //ULN2003 Stepper board
+          stepStateY = Stepper_step(stepStateY,1,50);
+	  }
+      else { sys_position[Y_AXIS]++; 
+		  //ULN2003 Stepper board
+	      stepStateY = Stepper_step(stepStateY,2,50);
+	  }
     }
   #endif // Ramps Board
   #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
@@ -524,30 +528,18 @@ ISR(TIMER1_COMPA_vect)
     st.counter_z += st.exec_block->steps[Z_AXIS];
   #endif
   #ifdef DEFAULTS_RAMPS_BOARD
-    if (st.counter_y > st.exec_block->step_event_count) {
-      st.step_outbits[Y_AXIS] |= (1<<STEP_BIT(Y_AXIS));
-      st.counter_y -= st.exec_block->step_event_count;
-      if (st.exec_block->direction_bits[Y_AXIS] & (1<<DIRECTION_BIT(Y_AXIS))) { sys_position[Y_AXIS]--;
-	  // ULN2003 stepper motor 
-          stepStateY = Stepper_step(stepStateY,1,50);
-	  }
-      else { sys_position[Y_AXIS]++;
-	  // ULN2003 stepper motor 
-          stepStateY = Stepper_step(stepStateY,2,50);
-	  }
+    if (st.counter_z > st.exec_block->step_event_count) {
+      st.step_outbits[Z_AXIS] |= (1<<STEP_BIT(Z_AXIS));
+      st.counter_z -= st.exec_block->step_event_count;
+      if (st.exec_block->direction_bits[Z_AXIS] & (1<<DIRECTION_BIT(Z_AXIS))) { sys_position[Z_AXIS]--; }
+      else { sys_position[Z_AXIS]++; }
     }
   #else
-    if (st.counter_y > st.exec_block->step_event_count) {
-      st.step_outbits |= (1<<Y_STEP_BIT);
-      st.counter_y -= st.exec_block->step_event_count;
-      if (st.exec_block->direction_bits & (1<<Y_DIRECTION_BIT)) { sys_position[Y_AXIS]--;
-	  // ULN2003 stepper motor 
-          stepStateY = Stepper_step(stepStateY,1,50);
-	  }
-      else { sys_position[Y_AXIS]++;
-	  // ULN2003 stepper motor  
-	  stepStateY = Stepper_step(stepStateY,2,50);
-	  }
+    if (st.counter_z > st.exec_block->step_event_count) {
+      st.step_outbits |= (1<<Z_STEP_BIT);
+      st.counter_z -= st.exec_block->step_event_count;
+      if (st.exec_block->direction_bits & (1<<Z_DIRECTION_BIT)) { sys_position[Z_AXIS]--; }
+      else { sys_position[Z_AXIS]++; }
     }
   #endif // Ramps Board
 
